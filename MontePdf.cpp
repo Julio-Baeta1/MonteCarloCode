@@ -10,6 +10,9 @@ using namespace arma;
 // A simple function to calculate area under straight line y=x using monte carlo method
 double monteStraightLine(double& lower, double& upper, int& n, vec& coeffs);
 
+// A simple function to calculate area under straight line y=x using monte carlo method
+double monteStraightLineIntervalMethod(double& lower, double& upper, int& n, vec& coeffs);
+
 // Use transform density to uniform density to calculate area of y=x
 double monteUniformArea(double& lower, double& upper, int& n);
 
@@ -19,17 +22,20 @@ int interval_contained(vec& partition, double& val);
 
 int main()
 {
-	int n{ 100 }; //10000
-	double low{ 0 }, up{ 1 }, ans{0};
-	vec straight_no_const("1 0");
+	int n{ 10000 }; //10000
+	double low{ 0 }, up{ 1 }, ans{ 0 }, tot{0};
+	vec straight_no_const("1 1");
 	
 
-	//// Make hypothesis test to check number of points is sufficient
-	for (int i = 0; i < 2; i++)
+	// Make hypothesis test to check number of points is sufficient
+	for (int i = 0; i < 10; i++)
 	{
 		ans = monteStraightLine(low, up, n, straight_no_const);
 		cout << ans << endl;
+		tot += ans;
 	}
+	cout << tot / 10 << endl;
+
 
 	//cout << endl << "Alternative test:" << endl;
 	//for (int i = 0; i < 10; i++)
@@ -62,30 +68,69 @@ int interval_contained(vec& partition, double& val)
 double monteStraightLine(double& lower, double& upper, int& n, vec& coeffs)
 //// coeffs [x^n, x^(n-1), ..., x^2, x, 1]
 // Add for lower =/= 0
-// Add for additional constant y = x + b
-// Add for different slope y = ax
+// Add for area below 0 option 
+// Check for higher order polynomial
 {
 
 	//For lower = 0
-	double area = (upper-lower)* (upper - lower); 
-	double under_count{ 0 };
-	int indx{ 0 };
-
 	vec x = linspace(lower, upper, n);
 	vec y = polyval(coeffs, x);
 
-	mat A(n,2, fill::randu); 
-	A = A * (upper - lower);
+	double area = y.max() * x.max(); //(upper-lower)* (upper - lower); 
+	double under_count{ 0 }, y_val{0};
 
-	cout << "start" << endl;
+	mat A(n,2, fill::randu); 
+	A.col(1) *= y.max();
+	A.col(0) *= x.max();
+
+	vec y_for_Ax = polyval(coeffs, A.col(0));
+
+	for (int i = 0; i < n; i++)
+	{
+		if (A.at(i,1) <= y_for_Ax.at(i))
+			under_count++;
+	}
+
+	//for (int i = 0; i < n; i++)
+	//{
+		//if (A.at(i, 0) > A.at(i, 1)) // Since y=x
+		//	under++;
+	//}
+
+	area = area * under_count / n;
+
+	return area;
+}
+
+double monteStraightLineIntervalMethod(double& lower, double& upper, int& n, vec& coeffs)
+//// coeffs [x^n, x^(n-1), ..., x^2, x, 1]
+// Add for lower =/= 0
+// Add for area below 0 option 
+// Check for higher order polynomial
+{
+
+	//For lower = 0
+	vec x = linspace(lower, upper, n);
+	vec y = polyval(coeffs, x);
+
+	double area = y.max() * x.max(); //(upper-lower)* (upper - lower); 
+	double under_count{ 0 }, a{ 0 }, b{ 0 };
+	int indx{ 0 };
+
+	mat A(n, 2, fill::randu);
+	A.col(1) *= y.max();
+	A.col(0) *= x.max();
+	//A = A * (upper - lower);
+
 	for (int i = 0; i < n; i++)
 	{
 		indx = interval_contained(x, A.at(i, 0));
-
-		if (A.at(i, 1) <= y.at(indx))
+		//if (A.at(i, 1) <= y.at(indx)) //Assume y value constant in interval
+		a = (y.at(indx) - y.at(indx - 1)) / (x.at(indx) - x.at(indx - 1));
+		b = y.at(indx) - a * x.at(indx);
+		if (A.at(i, 1) <= a * A.at(i, 0) + b)
 			under_count++;
 	}
-	cout << "end" << endl;
 
 	//for (int i = 0; i < n; i++)
 	//{
