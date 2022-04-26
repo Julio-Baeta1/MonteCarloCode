@@ -23,7 +23,7 @@ int interval_contained(vec& partition, double& val);
 int main()
 {
 	int n{ 10000 }; //10000
-	double low{ 0 }, up{ 1 }, ans{ 0 }, tot{0};
+	double low{ 3 }, up{ 5 }, ans{ 0 }, tot{0};
 	vec straight_no_const("1 1");
 	
 
@@ -71,33 +71,33 @@ double monteStraightLine(double& lower, double& upper, int& n, vec& coeffs)
 // Add for area below 0 option 
 // Check for higher order polynomial
 {
-
-	//For lower = 0
 	vec x = linspace(lower, upper, n);
 	vec y = polyval(coeffs, x);
+	double under_count{ 0 }, area{0};
 
-	double area = y.max() * x.max(); //(upper-lower)* (upper - lower); 
-	double under_count{ 0 }, y_val{0};
-
-	mat A(n,2, fill::randu); 
-	A.col(1) *= y.max();
-	A.col(0) *= x.max();
-
-	vec y_for_Ax = polyval(coeffs, A.col(0));
-
-	for (int i = 0; i < n; i++)
+	if (y.min() >= 0)
 	{
-		if (A.at(i,1) <= y_for_Ax.at(i))
-			under_count++;
+		double y_max_diff = y.max();
+		double x_max_diff = x.max() - x.min();
+		area = x_max_diff * y_max_diff;
+
+		mat A(n, 2, fill::randu);
+		A.col(1) = y_max_diff * A.col(1);
+		A.col(0) = x_max_diff * A.col(0) + x.min();
+
+		vec y_for_Ax = polyval(coeffs, A.col(0));
+
+		for (int i = 0; i < n; i++)
+		{
+			if (A.at(i, 1) <= y_for_Ax.at(i))
+				under_count++;
+		}
+		area = area * under_count / n;
 	}
-
-	//for (int i = 0; i < n; i++)
-	//{
-		//if (A.at(i, 0) > A.at(i, 1)) // Since y=x
-		//	under++;
-	//}
-
-	area = area * under_count / n;
+	else
+	{
+		cout << "negative y" << endl;
+	}
 
 	return area;
 }
@@ -131,12 +131,6 @@ double monteStraightLineIntervalMethod(double& lower, double& upper, int& n, vec
 		if (A.at(i, 1) <= a * A.at(i, 0) + b)
 			under_count++;
 	}
-
-	//for (int i = 0; i < n; i++)
-	//{
-		//if (A.at(i, 0) > A.at(i, 1)) // Since y=x
-		//	under++;
-	//}
 
 	area = area * under_count / n;
 
